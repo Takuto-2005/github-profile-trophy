@@ -21,26 +21,31 @@ const cacheControlHeader = [
   `stale-while-revalidate=${CONSTANTS.STALE_WHILE_REVALIDATE}`,
 ].join(", ");
 
-const defaultHeaders = new Headers(
-  {
-    "Content-Type": "image/svg+xml",
-    "Cache-Control": cacheControlHeader,
-  },
-);
+const defaultHeaders = new Headers({
+  "Content-Type": "image/svg+xml",
+  "Cache-Control": cacheControlHeader,
+});
 
 export default (request: Request) =>
-  staticRenderRegeneration(request, {
-    revalidate: CONSTANTS.REVALIDATE_TIME,
-    headers: defaultHeaders,
-  }, function (req: Request) {
-    return app(req);
-  });
+  staticRenderRegeneration(
+    request,
+    {
+      revalidate: CONSTANTS.REVALIDATE_TIME,
+      headers: defaultHeaders,
+    },
+    function (req: Request) {
+      return app(req);
+    },
+  );
 
 async function app(req: Request): Promise<Response> {
   const params = parseParams(req);
   const allowedUsername = Deno.env.get("ALLOWED_USERNAME")?.trim() || null;
   const requestedUsername = params.get("username");
-  const targetUsername = (requestedUsername ?? allowedUsername)?.trim() || null;
+  const normalizedRequestUsername = requestedUsername?.trim();
+  const targetUsername = normalizedRequestUsername?.length
+    ? normalizedRequestUsername
+    : allowedUsername;
   const row = params.getNumberValue("row", CONSTANTS.DEFAULT_MAX_ROW);
   const column = params.getNumberValue("column", CONSTANTS.DEFAULT_MAX_COLUMN);
   const themeParam: string = params.getStringValue("theme", "default");
@@ -90,20 +95,17 @@ async function app(req: Request): Promise<Response> {
       </script>
     </section>`,
     );
-    return new Response(
-      error.render(),
-      {
-        status: error.status,
-        headers: new Headers({
-          "Content-Type": "text",
-          "Cache-Control": cacheControlHeader,
-        }),
-      },
-    );
+    return new Response(error.render(), {
+      status: error.status,
+      headers: new Headers({
+        "Content-Type": "text/plain",
+        "Cache-Control": cacheControlHeader,
+      }),
+    });
   }
   if (allowedUsername) {
     const normalizedAllowed = allowedUsername.toLowerCase();
-    if (targetUsername.toLowerCase() !== normalizedAllowed) {
+    if (!targetUsername || targetUsername.toLowerCase() !== normalizedAllowed) {
       return new Response(
         `Forbidden: username is locked to ${allowedUsername}`,
         {
@@ -136,31 +138,30 @@ async function app(req: Request): Promise<Response> {
     "no-frame",
     CONSTANTS.DEFAULT_NO_FRAME,
   );
-  const titles: Array<string> = params.getAll("title").flatMap((r) =>
-    r.split(",")
-  ).map((r) => r.trim());
-  const ranks: Array<string> = params.getAll("rank").flatMap((r) =>
-    r.split(",")
-  ).map((r) => r.trim());
+  const titles: Array<string> = params
+    .getAll("title")
+    .flatMap((r) => r.split(","))
+    .map((r) => r.trim());
+  const ranks: Array<string> = params
+    .getAll("rank")
+    .flatMap((r) => r.split(","))
+    .map((r) => r.trim());
 
   const userKeyCache = ["v1", targetUsername].join("-");
-  const userInfoCached = await cacheProvider.get(userKeyCache) || "{}";
+  const userInfoCached = (await cacheProvider.get(userKeyCache)) || "{}";
   let userInfo = JSON.parse(userInfoCached);
   const hasCache = !!Object.keys(userInfo).length;
 
   if (!hasCache) {
     const userResponseInfo = await client.requestUserInfo(targetUsername);
     if (userResponseInfo instanceof ServiceError) {
-      return new Response(
-        ErrorPage({ error: userResponseInfo }).render(),
-        {
-          status: userResponseInfo.code,
-          headers: new Headers({
-            "Content-Type": "text",
-            "Cache-Control": cacheControlHeader,
-          }),
-        },
-      );
+      return new Response(ErrorPage({ error: userResponseInfo }).render(), {
+        status: userResponseInfo.code,
+        headers: new Headers({
+          "Content-Type": "text/plain",
+          "Cache-Control": cacheControlHeader,
+        }),
+      });
     }
     userInfo = userResponseInfo;
     await cacheProvider.set(userKeyCache, JSON.stringify(userInfo));
