@@ -19,10 +19,15 @@ import { Logger } from "../Helpers/Logger.ts";
 import { requestGithubData } from "./request.ts";
 
 // Need to be here - Exporting from another file makes array of null
-export const TOKENS = [
+const rawTokens = [
   Deno.env.get("GITHUB_TOKEN1"),
-  //Deno.env.get("GITHUB_TOKEN2"),
+  Deno.env.get("GITHUB_TOKEN2"),
 ];
+
+// Filter out empty/undefined tokens to avoid invalid auth headers
+export const TOKENS = rawTokens.filter((token) =>
+  typeof token === "string" && token.trim().length > 0
+) as string[];
 
 export class GithubApiService extends GithubRepository {
   async requestUserRepository(
@@ -94,6 +99,13 @@ export class GithubApiService extends GithubRepository {
     variables: { [key: string]: string },
   ) {
     try {
+      if (TOKENS.length === 0) {
+        Logger.error("GitHub token is not configured.");
+        return new ServiceError(
+          "GitHub token is not configured",
+          EServiceKindError.NOT_FOUND,
+        );
+      }
       const retry = new Retry(
         TOKENS.length,
         CONSTANTS.DEFAULT_GITHUB_RETRY_DELAY,

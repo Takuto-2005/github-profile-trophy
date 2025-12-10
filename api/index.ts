@@ -38,11 +38,13 @@ export default (request: Request) =>
 
 async function app(req: Request): Promise<Response> {
   const params = parseParams(req);
-  const username = params.get("username");
+  const allowedUsername = Deno.env.get("ALLOWED_USERNAME")?.trim() || null;
+  const requestedUsername = params.get("username");
+  const targetUsername = (requestedUsername ?? allowedUsername)?.trim() || null;
   const row = params.getNumberValue("row", CONSTANTS.DEFAULT_MAX_ROW);
   const column = params.getNumberValue("column", CONSTANTS.DEFAULT_MAX_COLUMN);
   const themeParam: string = params.getStringValue("theme", "default");
-  if (username === null) {
+  if (targetUsername === null) {
     const [base] = req.url.split("?");
     const error = new Error400(
       `<section>
@@ -99,6 +101,21 @@ async function app(req: Request): Promise<Response> {
       },
     );
   }
+  if (allowedUsername) {
+    const normalizedAllowed = allowedUsername.toLowerCase();
+    if (targetUsername.toLowerCase() !== normalizedAllowed) {
+      return new Response(
+        `Forbidden: username is locked to ${allowedUsername}`,
+        {
+          status: 403,
+          headers: new Headers({
+            "Content-Type": "text/plain",
+            "Cache-Control": "no-store",
+          }),
+        },
+      );
+    }
+  }
   let theme: Theme = COLORS.default;
   if (Object.keys(COLORS).includes(themeParam)) {
     theme = COLORS[themeParam];
@@ -126,13 +143,13 @@ async function app(req: Request): Promise<Response> {
     r.split(",")
   ).map((r) => r.trim());
 
-  const userKeyCache = ["v1", username].join("-");
+  const userKeyCache = ["v1", targetUsername].join("-");
   const userInfoCached = await cacheProvider.get(userKeyCache) || "{}";
   let userInfo = JSON.parse(userInfoCached);
   const hasCache = !!Object.keys(userInfo).length;
 
   if (!hasCache) {
-    const userResponseInfo = await client.requestUserInfo(username);
+    const userResponseInfo = await client.requestUserInfo(targetUsername);
     if (userResponseInfo instanceof ServiceError) {
       return new Response(
         ErrorPage({ error: userResponseInfo }).render(),

@@ -54,6 +54,23 @@ readme, change the `?username=` value to your GitHub's username.
   <img src="https://github-profile-trophy.vercel.app/?username=ryo-ma&column=8&rank=SSS,SS,S,AAA,AA,A,B,C" />
 </p>
 
+## Self-host on Vercel (personal use)
+
+- Fork this repo, then create a new Vercel Project from your fork.
+- Set Environment Variables in **Project Settings → Environment Variables**:
+  - `GITHUB_TOKEN1`: Classic PAT with `read:user` and `public_repo` (use `repo`
+    if you need private stats).
+  - `GITHUB_TOKEN2`: (optional) second token for fallback/rotation.
+  - `ALLOWED_USERNAME`: The single GitHub username to serve (e.g. `Takuto-2005`).
+  - `GITHUB_API`: (optional) defaults to `https://api.github.com/graphql`.
+- Redeploy after adding/updating environment variables so Vercel picks them up.
+- Access: `https://<your-vercel-domain>/` (username defaults to
+  `ALLOWED_USERNAME`). Requests for other usernames return 403.
+- If you still see a 400/403, re-check that the PAT scopes are classic
+  (not fine-grained), env vars exist in the Production environment, and confirm
+  via Vercel deployment logs (example project page:
+  https://vercel.com/takus-projects-3ca1349f/github-profile-trophy/7p8fPHL8iGTwsd6di4jQDiV2LtdE).
+
 ## Use theme
 
 Add optional parameter of the theme.
