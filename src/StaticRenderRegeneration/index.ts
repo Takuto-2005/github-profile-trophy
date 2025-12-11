@@ -17,6 +17,7 @@ export async function staticRenderRegeneration(
 
   const cacheFile = await hashString(url.pathname + (url.search ?? ""));
   const cacheManager = new CacheManager(options.revalidate ?? 0, cacheFile);
+
   if (cacheManager.isCacheValid) {
     const cache = readCache(cacheManager.cacheFilePath);
     if (cache !== null) {

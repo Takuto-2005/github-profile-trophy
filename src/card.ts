@@ -17,20 +17,17 @@ export class Card {
     private noBackground: boolean,
     private noFrame: boolean,
   ) {
-    this.width = panelSize * this.maxColumn +
-      this.marginWidth * (this.maxColumn - 1);
+    this.width =
+      panelSize * this.maxColumn + this.marginWidth * (this.maxColumn - 1);
   }
-  render(
-    userInfo: UserInfo,
-    theme: Theme,
-  ): string {
+  render(userInfo: UserInfo, theme: Theme): string {
     const trophyList = new TrophyList(userInfo);
 
     trophyList.filterByHidden();
 
     if (this.titles.length != 0) {
-      const includeTitles = this.titles.filter((title) =>
-        !title.startsWith("-")
+      const includeTitles = this.titles.filter(
+        (title) => !title.startsWith("-"),
       );
       if (includeTitles.length > 0) {
         trophyList.filterByTitles(includeTitles);
@@ -46,14 +43,15 @@ export class Card {
 
     if (this.maxColumn == -1) {
       this.maxColumn = trophyList.length;
-      this.width = this.panelSize * this.maxColumn +
+      this.width =
+        this.panelSize * this.maxColumn +
         this.marginWidth * (this.maxColumn - 1);
     }
 
     const row = this.getRow(trophyList);
     this.height = this.getHeight(row);
 
-    return `
+    const output = `
     <svg
       width="${this.width}"
       height="${this.height}"
@@ -63,6 +61,8 @@ export class Card {
     >
       ${this.renderTrophy(trophyList, theme)}
     </svg>`;
+
+    return output;
   }
   private getRow(trophyList: TrophyList) {
     let row = Math.floor((trophyList.length - 1) / this.maxColumn) + 1;
@@ -81,10 +81,11 @@ export class Card {
       (sum: string, trophy: Trophy, i: number) => {
         const currentColumn = i % this.maxColumn;
         const currentRow = Math.floor(i / this.maxColumn);
-        const x = this.panelSize * currentColumn +
-          this.marginWidth * currentColumn;
+        const x =
+          this.panelSize * currentColumn + this.marginWidth * currentColumn;
         const y = this.panelSize * currentRow + this.marginHeight * currentRow;
-        return sum +
+        return (
+          sum +
           trophy.render(
             theme,
             x,
@@ -92,7 +93,8 @@ export class Card {
             this.panelSize,
             this.noBackground,
             this.noFrame,
-          );
+          )
+        );
       },
       "",
     );

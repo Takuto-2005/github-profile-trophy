@@ -39,6 +39,18 @@ export default (request: Request) =>
   );
 
 async function app(req: Request): Promise<Response> {
+  // Security: Limit query string length to prevent cache exhaustion
+  const urlObj = new URL(req.url);
+  if (urlObj.search.length > CONSTANTS.MAX_QUERY_LENGTH) {
+    return new Response("Query string too long", {
+      status: 400,
+      headers: new Headers({
+        "Content-Type": "text/plain",
+        "Cache-Control": "no-store",
+      }),
+    });
+  }
+
   const params = parseParams(req);
   const allowedUsername = Deno.env.get("ALLOWED_USERNAME")?.trim() || null;
   const requestedUsername = params.get("username");
@@ -46,8 +58,15 @@ async function app(req: Request): Promise<Response> {
   const targetUsername = normalizedRequestUsername?.length
     ? normalizedRequestUsername
     : allowedUsername;
-  const row = params.getNumberValue("row", CONSTANTS.DEFAULT_MAX_ROW);
-  const column = params.getNumberValue("column", CONSTANTS.DEFAULT_MAX_COLUMN);
+
+  // Security: Apply limits to prevent DoS attacks
+  const rawRow = params.getNumberValue("row", CONSTANTS.DEFAULT_MAX_ROW);
+  const rawColumn = params.getNumberValue(
+    "column",
+    CONSTANTS.DEFAULT_MAX_COLUMN,
+  );
+  const row = Math.min(Math.max(1, rawRow), CONSTANTS.MAX_ROW);
+  const column = Math.min(Math.max(1, rawColumn), CONSTANTS.MAX_COLUMN);
   const themeParam: string = params.getStringValue("theme", "default");
   if (targetUsername === null) {
     const [base] = req.url.split("?");
@@ -122,13 +141,22 @@ async function app(req: Request): Promise<Response> {
   if (Object.keys(COLORS).includes(themeParam)) {
     theme = COLORS[themeParam];
   }
-  const marginWidth = params.getNumberValue(
+  // Security: Apply limits to margin values to prevent DoS attacks
+  const rawMarginWidth = params.getNumberValue(
     "margin-w",
     CONSTANTS.DEFAULT_MARGIN_W,
   );
-  const paddingHeight = params.getNumberValue(
+  const rawPaddingHeight = params.getNumberValue(
     "margin-h",
     CONSTANTS.DEFAULT_MARGIN_H,
+  );
+  const marginWidth = Math.min(
+    Math.max(0, rawMarginWidth),
+    CONSTANTS.MAX_MARGIN,
+  );
+  const paddingHeight = Math.min(
+    Math.max(0, rawPaddingHeight),
+    CONSTANTS.MAX_MARGIN,
   );
   const noBackground = params.getBooleanValue(
     "no-bg",
@@ -149,7 +177,14 @@ async function app(req: Request): Promise<Response> {
 
   const userKeyCache = ["v1", targetUsername].join("-");
   const userInfoCached = (await cacheProvider.get(userKeyCache)) || "{}";
-  let userInfo = JSON.parse(userInfoCached);
+  let userInfo;
+  try {
+    userInfo = JSON.parse(userInfoCached);
+  } catch (error) {
+    // Security: Clear corrupted cache to prevent repeated errors
+    await cacheProvider.del(userKeyCache);
+    userInfo = {};
+  }
   const hasCache = !!Object.keys(userInfo).length;
 
   if (!hasCache) {

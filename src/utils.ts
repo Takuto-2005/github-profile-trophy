@@ -65,6 +65,11 @@ export const CONSTANTS = {
   DEFAULT_GITHUB_RETRY_DELAY: 500,
   REVALIDATE_TIME: HOUR_IN_MILLISECONDS,
   REDIS_TTL: HOUR_IN_MILLISECONDS * 4,
+  // Security limits to prevent DoS attacks
+  MAX_COLUMN: 20,
+  MAX_ROW: 10,
+  MAX_MARGIN: 100,
+  MAX_QUERY_LENGTH: 2048, // Maximum URL query string length
 };
 
 export enum RANK {

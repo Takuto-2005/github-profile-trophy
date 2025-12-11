@@ -570,6 +570,42 @@ https://github-profile-trophy.vercel.app/?username=ryo-ma&no-frame=true
   <img width="936" src="https://github.com/user-attachments/assets/54de15a3-d907-4a50-8117-170aae74d1cd">
 </p>
 
+# Security
+
+This project implements security measures to protect against common vulnerabilities:
+
+## Security Features
+
+### Input Validation and Limits
+
+To prevent Denial of Service (DoS) attacks, the following limits are enforced on request parameters:
+
+- **Row limit**: Maximum of 10 rows (`row` parameter)
+- **Column limit**: Maximum of 20 columns (`column` parameter)
+- **Margin limits**: Maximum of 100 pixels for both `margin-w` and `margin-h` parameters
+- **Query string length**: Maximum of 2048 characters for the entire query string
+
+These limits prevent malicious users from consuming excessive server resources by requesting extremely large SVG renderings.
+
+### Cache Protection
+
+- **Query string length limit**: Prevents cache exhaustion attacks by limiting the length of query parameters
+- **Corrupted cache handling**: Automatically clears corrupted cache entries to prevent repeated errors
+
+### Error Handling
+
+- Invalid or corrupted cache data is automatically cleared and does not cause server failures
+- All input parameters are validated and sanitized before processing
+
+## Reporting Security Issues
+
+If you discover a security vulnerability, please report it responsibly by:
+
+1. Opening a private security advisory on GitHub
+2. Or emailing the project maintainers directly
+
+Please do not open public issues for security vulnerabilities.
+
 # Contribution Guide
 
 Check [CONTRIBUTING.md](./CONTRIBUTING.md) for more details.
